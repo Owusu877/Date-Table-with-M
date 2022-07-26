@@ -1,0 +1,46 @@
+= let
+    Source = List.Dates(StartDate, Length, #duration(1, 0, 0, 0)),
+    #"Converted to Table" = Table.FromList(Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Renamed Columns" = Table.RenameColumns(#"Converted to Table",{{"Column1", "date"}}),
+    StartDate = Date.AddDays( Date.AddDays(Date.From(DateTime.LocalNow()), 1), -820),
+    Today = (Date.From(DateTime.LocalNow())),
+    Length = Duration.Days(Today - StartDate) + 1,
+    #"Inserted date" = #"Renamed Columns",
+    #"Inserted month" = Table.AddColumn(#"Inserted date", "month", each Date.Month([date]), Int64.Type),
+    #"Inserted year" = Table.AddColumn(#"Inserted month", "year", each Date.Year([date]), Int64.Type),
+    #"Inserted quarter" = Table.AddColumn(#"Inserted year", "quarter", each Date.QuarterOfYear([date]), Int64.Type),
+    #"Inserted day_of_week" = Table.AddColumn(#"Inserted quarter", "day_of_week", each Date.DayOfWeek([date]), Int64.Type),
+    #"Inserted day" = Table.AddColumn(#"Inserted day_of_week", "day", each Date.Day([date]), Int64.Type),
+    #"Inserted day_name" = Table.AddColumn(#"Inserted day", "day_name", each Date.DayOfWeekName([date]), type text),
+    #"Inserted week_of_year" = Table.AddColumn(#"Inserted day_name", "week_of_year", each Date.WeekOfYear([date]), Int64.Type),
+    #"Inserted start_of_week" = Table.AddColumn(#"Inserted week_of_year", "start_of_week", each Date.StartOfWeek([date]), type date),
+    #"Inserted month_year" = Table.AddColumn(#"Inserted start_of_week", "month_year", each Date.ToText([date], "MMM yyyy")),
+    #"Inserted yyyymm" = Table.AddColumn(#"Inserted month_year", "yyyymm", each Date.ToText([date], "yyyyMM")),
+    #"Inserted yyyyww" = Table.AddColumn(#"Inserted yyyymm", "yyyyww", each if Text.Length(Text.From([week_of_year])) < 2 then Text.From([year]) & "0" & Text.From([week_of_year]) else Text.From([year]) & Text.From([week_of_year])),
+    #"Changed Types" = Table.TransformColumnTypes(#"Inserted yyyyww",
+        {
+            {"month_year",    type text},
+            {"yyyyww",       Int64.Type},
+            {"date",          type date},
+            {"yyyymm",       Int64.Type}            
+        }
+    ),
+    #"Reordered Columns" = Table.ReorderColumns(#"Changed Types",
+        {
+            "date", 
+            "day", 
+            "month", 
+            "quarter", 
+            "year", 
+            "day_of_week", 
+            "day_name", 
+            "week_of_year", 
+            "start_of_week", 
+            "month_year", 
+            "yyyymm", 
+            "yyyyww"
+        }
+    ),
+    #"Sorted Rows" = Table.Sort(#"Reordered Columns",{{"date", Order.Descending}})
+in
+    #"Sorted Rows"
